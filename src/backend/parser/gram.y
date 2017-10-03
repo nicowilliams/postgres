@@ -133,6 +133,7 @@ typedef struct ImportQual
 #define CAS_INITIALLY_DEFERRED		0x08
 #define CAS_NOT_VALID				0x10
 #define CAS_NO_INHERIT				0x20
+#define CAS_ALWAYS_DEFERRED		0x40
 
 
 #define parser_yyerror(msg)  scanner_yyerror(msg, yyscanner)
@@ -184,8 +185,8 @@ static void SplitColQualList(List *qualList,
 							 List **constraintList, CollateClause **collClause,
 							 core_yyscan_t yyscanner);
 static void processCASbits(int cas_bits, int location, const char *constrType,
-			   bool *deferrable, bool *initdeferred, bool *not_valid,
-			   bool *no_inherit, core_yyscan_t yyscanner);
+			   bool *deferrable, bool *initdeferred, bool *alwaysdeferred,
+			   bool *not_valid, bool *no_inherit, core_yyscan_t yyscanner);
 static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 %}
@@ -734,6 +735,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
  * for RANGE, ROWS, GROUPS so that they can follow a_expr without creating
  * postfix-operator problems;
  * for GENERATED so that it can follow b_expr;
+ * for ALWAYS for column constraints ALWAYS DEFERRED;
  * and for NULL so that it can follow b_expr in ColQualList without creating
  * postfix-operator problems.
  *
@@ -752,7 +754,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
  * blame any funny behavior of UNBOUNDED on the SQL standard, though.
  */
 %nonassoc	UNBOUNDED		/* ideally should have same precedence as IDENT */
-%nonassoc	IDENT GENERATED NULL_P PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP
+%nonassoc	IDENT GENERATED NULL_P PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP ALWAYS
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
 %left		'+' '-'
 %left		'*' '/' '%'
@@ -2281,7 +2283,9 @@ alter_table_cmd:
 					processCASbits($4, @4, "ALTER CONSTRAINT statement",
 									&c->deferrable,
 									&c->initdeferred,
-									NULL, NULL, yyscanner);
+									&c->alwaysdeferred,
+									NULL, NULL,
+									yyscanner);
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> VALIDATE CONSTRAINT ... */
@@ -3620,6 +3624,13 @@ ConstraintAttr:
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			| ALWAYS DEFERRED
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_ATTR_ALWAYS_DEFERRED;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
 		;
 
 
@@ -3675,8 +3686,10 @@ ConstraintElem:
 					n->raw_expr = $3;
 					n->cooked_expr = NULL;
 					processCASbits($5, @5, "CHECK",
-								   NULL, NULL, &n->skip_validation,
-								   &n->is_no_inherit, yyscanner);
+								   NULL, NULL, NULL,
+								   &n->skip_validation,
+								   &n->is_no_inherit,
+								   yyscanner);
 					n->initially_valid = !n->skip_validation;
 					$$ = (Node *)n;
 				}
@@ -3692,8 +3705,9 @@ ConstraintElem:
 					n->indexname = NULL;
 					n->indexspace = $7;
 					processCASbits($8, @8, "UNIQUE",
-								   &n->deferrable, &n->initdeferred, NULL,
-								   NULL, yyscanner);
+								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred, NULL, NULL,
+								   yyscanner);
 					$$ = (Node *)n;
 				}
 			| UNIQUE ExistingIndex ConstraintAttributeSpec
@@ -3707,8 +3721,9 @@ ConstraintElem:
 					n->indexname = $2;
 					n->indexspace = NULL;
 					processCASbits($3, @3, "UNIQUE",
-								   &n->deferrable, &n->initdeferred, NULL,
-								   NULL, yyscanner);
+								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred, NULL, NULL,
+								   yyscanner);
 					$$ = (Node *)n;
 				}
 			| PRIMARY KEY '(' columnList ')' opt_c_include opt_definition OptConsTableSpace
@@ -3723,8 +3738,9 @@ ConstraintElem:
 					n->indexname = NULL;
 					n->indexspace = $8;
 					processCASbits($9, @9, "PRIMARY KEY",
-								   &n->deferrable, &n->initdeferred, NULL,
-								   NULL, yyscanner);
+								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred, NULL, NULL,
+								   yyscanner);
 					$$ = (Node *)n;
 				}
 			| PRIMARY KEY ExistingIndex ConstraintAttributeSpec
@@ -3738,8 +3754,9 @@ ConstraintElem:
 					n->indexname = $3;
 					n->indexspace = NULL;
 					processCASbits($4, @4, "PRIMARY KEY",
-								   &n->deferrable, &n->initdeferred, NULL,
-								   NULL, yyscanner);
+								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred, NULL, NULL,
+								   yyscanner);
 					$$ = (Node *)n;
 				}
 			| EXCLUDE access_method_clause '(' ExclusionConstraintList ')'
@@ -3757,8 +3774,9 @@ ConstraintElem:
 					n->indexspace		= $8;
 					n->where_clause		= $9;
 					processCASbits($10, @10, "EXCLUDE",
-								   &n->deferrable, &n->initdeferred, NULL,
-								   NULL, yyscanner);
+								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred, NULL, NULL,
+								   yyscanner);
 					$$ = (Node *)n;
 				}
 			| FOREIGN KEY '(' columnList ')' REFERENCES qualified_name
@@ -3775,6 +3793,7 @@ ConstraintElem:
 					n->fk_del_action	= (char) ($10 & 0xFF);
 					processCASbits($11, @11, "FOREIGN KEY",
 								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred,
 								   &n->skip_validation, NULL,
 								   yyscanner);
 					n->initially_valid = !n->skip_validation;
@@ -5360,6 +5379,7 @@ CreateTrigStmt:
 					n->isconstraint  = false;
 					n->deferrable	 = false;
 					n->initdeferred  = false;
+					n->alwaysdeferred  = false;
 					n->constrrel = NULL;
 					$$ = (Node *)n;
 				}
@@ -5381,8 +5401,9 @@ CreateTrigStmt:
 					n->transitionRels = NIL;
 					n->isconstraint  = true;
 					processCASbits($10, @10, "TRIGGER",
-								   &n->deferrable, &n->initdeferred, NULL,
-								   NULL, yyscanner);
+								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred, NULL, NULL,
+								   yyscanner);
 					n->constrrel = $9;
 					$$ = (Node *)n;
 				}
@@ -5538,17 +5559,24 @@ ConstraintAttributeSpec:
 					int		newspec = $1 | $2;
 
 					/* special message for this case */
-					if ((newspec & (CAS_NOT_DEFERRABLE | CAS_INITIALLY_DEFERRED)) == (CAS_NOT_DEFERRABLE | CAS_INITIALLY_DEFERRED))
+					if ((newspec & CAS_NOT_DEFERRABLE) &&
+						(newspec & (CAS_INITIALLY_DEFERRED | CAS_ALWAYS_DEFERRED)))
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("constraint declared INITIALLY DEFERRED must be DEFERRABLE"),
 								 parser_errposition(@2)));
 					/* generic message for other conflicts */
+					if ((newspec & CAS_ALWAYS_DEFERRED) &&
+						(newspec & (CAS_INITIALLY_IMMEDIATE)))
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("conflicting constraint properties 1"),
+								 parser_errposition(@2)));
 					if ((newspec & (CAS_NOT_DEFERRABLE | CAS_DEFERRABLE)) == (CAS_NOT_DEFERRABLE | CAS_DEFERRABLE) ||
 						(newspec & (CAS_INITIALLY_IMMEDIATE | CAS_INITIALLY_DEFERRED)) == (CAS_INITIALLY_IMMEDIATE | CAS_INITIALLY_DEFERRED))
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("conflicting constraint properties"),
+								 errmsg("conflicting constraint properties 2"),
 								 parser_errposition(@2)));
 					$$ = newspec;
 				}
@@ -5559,6 +5587,7 @@ ConstraintAttributeElem:
 			| DEFERRABLE					{ $$ = CAS_DEFERRABLE; }
 			| INITIALLY IMMEDIATE			{ $$ = CAS_INITIALLY_IMMEDIATE; }
 			| INITIALLY DEFERRED			{ $$ = CAS_INITIALLY_DEFERRED; }
+			| ALWAYS DEFERRED			{ $$ = CAS_ALWAYS_DEFERRED; }
 			| NOT VALID						{ $$ = CAS_NOT_VALID; }
 			| NO INHERIT					{ $$ = CAS_NO_INHERIT; }
 		;
@@ -5649,8 +5678,9 @@ CreateAssertStmt:
 					n->args = list_make1($6);
 					n->isconstraint  = true;
 					processCASbits($8, @8, "ASSERTION",
-								   &n->deferrable, &n->initdeferred, NULL,
-								   NULL, yyscanner);
+								   &n->deferrable, &n->initdeferred,
+								   &n->alwaysdeferred, NULL, NULL,
+								   yyscanner);
 
 					ereport(ERROR,
 							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -7398,6 +7428,7 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 					n->isconstraint = false;
 					n->deferrable = false;
 					n->initdeferred = false;
+					n->alwaysdeferred = false;
 					n->transformed = false;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
@@ -7426,6 +7457,7 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 					n->isconstraint = false;
 					n->deferrable = false;
 					n->initdeferred = false;
+					n->alwaysdeferred = false;
 					n->transformed = false;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
@@ -16197,18 +16229,20 @@ SplitColQualList(List *qualList,
  */
 static void
 processCASbits(int cas_bits, int location, const char *constrType,
-			   bool *deferrable, bool *initdeferred, bool *not_valid,
-			   bool *no_inherit, core_yyscan_t yyscanner)
+			   bool *deferrable, bool *initdeferred, bool *alwaysdeferred,
+			   bool *not_valid, bool *no_inherit, core_yyscan_t yyscanner)
 {
 	/* defaults */
 	if (deferrable)
 		*deferrable = false;
 	if (initdeferred)
 		*initdeferred = false;
+	if (alwaysdeferred)
+		*alwaysdeferred = false;
 	if (not_valid)
 		*not_valid = false;
 
-	if (cas_bits & (CAS_DEFERRABLE | CAS_INITIALLY_DEFERRED))
+	if (cas_bits & (CAS_DEFERRABLE | CAS_INITIALLY_DEFERRED | CAS_ALWAYS_DEFERRED))
 	{
 		if (deferrable)
 			*deferrable = true;
@@ -16221,7 +16255,7 @@ processCASbits(int cas_bits, int location, const char *constrType,
 					 parser_errposition(location)));
 	}
 
-	if (cas_bits & CAS_INITIALLY_DEFERRED)
+	if (cas_bits & (CAS_INITIALLY_DEFERRED | CAS_ALWAYS_DEFERRED))
 	{
 		if (initdeferred)
 			*initdeferred = true;
@@ -16230,6 +16264,19 @@ processCASbits(int cas_bits, int location, const char *constrType,
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 /* translator: %s is CHECK, UNIQUE, or similar */
 					 errmsg("%s constraints cannot be marked DEFERRABLE",
+							constrType),
+					 parser_errposition(location)));
+	}
+
+	if (cas_bits & CAS_ALWAYS_DEFERRED)
+	{
+		if (alwaysdeferred)
+			*alwaysdeferred = true;
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 /* translator: %s is CHECK, UNIQUE, or similar */
+					 errmsg("%s constraints cannot be marked DEFERRED",
 							constrType),
 					 parser_errposition(location)));
 	}

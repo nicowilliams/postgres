@@ -845,6 +845,8 @@ DefineIndex(Oid relationId,
 		constr_flags |= INDEX_CONSTR_CREATE_DEFERRABLE;
 	if (stmt->initdeferred)
 		constr_flags |= INDEX_CONSTR_CREATE_INIT_DEFERRED;
+	if (stmt->alwaysdeferred)
+		constr_flags |= INDEX_CONSTR_CREATE_ALWAYS_DEFERRED;
 
 	indexRelationId =
 		index_create(rel, indexRelationName, indexRelationId, parentIndexId,

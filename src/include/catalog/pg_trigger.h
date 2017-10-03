@@ -46,6 +46,7 @@ CATALOG(pg_trigger,2620,TriggerRelationId)
 	Oid			tgconstraint;	/* associated pg_constraint entry, if any */
 	bool		tgdeferrable;	/* constraint trigger is deferrable */
 	bool		tginitdeferred; /* constraint trigger is deferred initially */
+	bool		tgalwaysdeferred; /* constraint trigger is always deferred */
 	int16		tgnargs;		/* # of extra arguments in tgargs */
 
 	/*

@@ -2263,6 +2263,7 @@ StoreRelCheck(Relation rel, const char *ccname, Node *expr,
 							  CONSTRAINT_CHECK, /* Constraint Type */
 							  false,	/* Is Deferrable */
 							  false,	/* Is Deferred */
+							  false,	/* Is Always Deferred */
 							  is_validated,
 							  InvalidOid,	/* no parent constraint */
 							  RelationGetRelid(rel),	/* relation */

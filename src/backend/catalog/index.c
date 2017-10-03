@@ -1070,6 +1070,7 @@ index_create(Relation heapRelation,
 
 				recordDependencyOn(&myself, &referenced, deptype);
 			}
+			Assert((flags & INDEX_CREATE_ADD_CONSTRAINT) == 0);
 		}
 
 		/* Store dependency on parent index, if any */
@@ -1215,6 +1216,7 @@ index_create(Relation heapRelation,
  *		INDEX_CONSTR_CREATE_MARK_AS_PRIMARY: index is a PRIMARY KEY
  *		INDEX_CONSTR_CREATE_DEFERRABLE: constraint is DEFERRABLE
  *		INDEX_CONSTR_CREATE_INIT_DEFERRED: constraint is INITIALLY DEFERRED
+ *		INDEX_CONSTR_CREATE_ALWAYS_DEFERRED: constraint is ALWAYS DEFERRED
  *		INDEX_CONSTR_CREATE_UPDATE_INDEX: update the pg_index row
  *		INDEX_CONSTR_CREATE_REMOVE_OLD_DEPS: remove existing dependencies
  *			of index on table's columns
@@ -1238,6 +1240,7 @@ index_constraint_create(Relation heapRelation,
 	Oid			conOid;
 	bool		deferrable;
 	bool		initdeferred;
+	bool		alwaysdeferred;
 	bool		mark_as_primary;
 	bool		islocal;
 	bool		noinherit;
@@ -1245,6 +1248,7 @@ index_constraint_create(Relation heapRelation,
 
 	deferrable = (constr_flags & INDEX_CONSTR_CREATE_DEFERRABLE) != 0;
 	initdeferred = (constr_flags & INDEX_CONSTR_CREATE_INIT_DEFERRED) != 0;
+	alwaysdeferred = (constr_flags & INDEX_CONSTR_CREATE_ALWAYS_DEFERRED) != 0;
 	mark_as_primary = (constr_flags & INDEX_CONSTR_CREATE_MARK_AS_PRIMARY) != 0;
 
 	/* constraint creation support doesn't work while bootstrapping */
@@ -1297,6 +1301,7 @@ index_constraint_create(Relation heapRelation,
 								   constraintType,
 								   deferrable,
 								   initdeferred,
+								   alwaysdeferred,
 								   true,
 								   parentConstraintId,
 								   RelationGetRelid(heapRelation),
@@ -1375,6 +1380,7 @@ index_constraint_create(Relation heapRelation,
 		trigger->isconstraint = true;
 		trigger->deferrable = true;
 		trigger->initdeferred = initdeferred;
+		trigger->alwaysdeferred = alwaysdeferred;
 		trigger->constrrel = NULL;
 
 		(void) CreateTrigger(trigger, NULL, RelationGetRelid(heapRelation),

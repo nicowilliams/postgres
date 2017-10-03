@@ -411,6 +411,7 @@ typedef struct _triggerInfo
 	char		tgenabled;
 	bool		tgdeferrable;
 	bool		tginitdeferred;
+	bool		tgalwaysdeferred;
 	char	   *tgdef;
 } TriggerInfo;
 
@@ -444,6 +445,7 @@ typedef struct _constraintInfo
 	DumpId		conindex;		/* identifies associated index if any */
 	bool		condeferrable;	/* true if constraint is DEFERRABLE */
 	bool		condeferred;	/* true if constraint is INITIALLY DEFERRED */
+	bool		conalwaysdeferred;	/* true if constraint is ALWAYS DEFERRED */
 	bool		conislocal;		/* true if constraint has local definition */
 	bool		separate;		/* true if must dump as separate item */
 } ConstraintInfo;

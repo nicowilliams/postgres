@@ -45,6 +45,7 @@ CATALOG(pg_constraint,2606,ConstraintRelationId)
 	char		contype;		/* constraint type; see codes below */
 	bool		condeferrable;	/* deferrable constraint? */
 	bool		condeferred;	/* deferred by default? */
+	bool		conalwaysdeferred;	/* always deferred? */
 	bool		convalidated;	/* constraint has been validated? */
 
 	/*
