@@ -1215,6 +1215,7 @@ index_create(Relation heapRelation,
  *		INDEX_CONSTR_CREATE_MARK_AS_PRIMARY: index is a PRIMARY KEY
  *		INDEX_CONSTR_CREATE_DEFERRABLE: constraint is DEFERRABLE
  *		INDEX_CONSTR_CREATE_INIT_DEFERRED: constraint is INITIALLY DEFERRED
+ *		INDEX_CONSTR_CREATE_ALWAYS_DEFERRED: constraint is ALWAYS DEFERRED
  *		INDEX_CONSTR_CREATE_UPDATE_INDEX: update the pg_index row
  *		INDEX_CONSTR_CREATE_REMOVE_OLD_DEPS: remove existing dependencies
  *			of index on table's columns
@@ -1236,15 +1237,20 @@ index_constraint_create(Relation heapRelation,
 	ObjectAddress myself,
 				referenced;
 	Oid			conOid;
-	bool		deferrable;
-	bool		initdeferred;
+	char		deferral;
 	bool		mark_as_primary;
 	bool		islocal;
 	bool		noinherit;
 	int			inhcount;
 
-	deferrable = (constr_flags & INDEX_CONSTR_CREATE_DEFERRABLE) != 0;
-	initdeferred = (constr_flags & INDEX_CONSTR_CREATE_INIT_DEFERRED) != 0;
+	if (constr_flags & INDEX_CONSTR_CREATE_ALWAYS_DEFERRED)
+	    deferral = 'a';
+	else if (constr_flags & INDEX_CONSTR_CREATE_INIT_DEFERRED)
+	    deferral = 'i';
+	else if (constr_flags & INDEX_CONSTR_CREATE_DEFERRABLE)
+	    deferral = 'd';
+	else
+	    deferral = 'n';
 	mark_as_primary = (constr_flags & INDEX_CONSTR_CREATE_MARK_AS_PRIMARY) != 0;
 
 	/* constraint creation support doesn't work while bootstrapping */
@@ -1295,8 +1301,7 @@ index_constraint_create(Relation heapRelation,
 	conOid = CreateConstraintEntry(constraintName,
 								   namespaceId,
 								   constraintType,
-								   deferrable,
-								   initdeferred,
+								   deferral,
 								   true,
 								   parentConstraintId,
 								   RelationGetRelid(heapRelation),
@@ -1356,7 +1361,7 @@ index_constraint_create(Relation heapRelation,
 	 * checking trigger.  (The trigger will be given an internal dependency on
 	 * the constraint by CreateTrigger.)
 	 */
-	if (deferrable)
+	if (deferral != 'n')
 	{
 		CreateTrigStmt *trigger;
 
@@ -1373,8 +1378,7 @@ index_constraint_create(Relation heapRelation,
 		trigger->columns = NIL;
 		trigger->whenClause = NULL;
 		trigger->isconstraint = true;
-		trigger->deferrable = true;
-		trigger->initdeferred = initdeferred;
+		trigger->deferral = deferral;
 		trigger->constrrel = NULL;
 
 		(void) CreateTrigger(trigger, NULL, RelationGetRelid(heapRelation),
@@ -1391,7 +1395,7 @@ index_constraint_create(Relation heapRelation,
 	 * index at all.
 	 */
 	if ((constr_flags & INDEX_CONSTR_CREATE_UPDATE_INDEX) &&
-		(mark_as_primary || deferrable))
+		(mark_as_primary || deferral != 'n'))
 	{
 		Relation	pg_index;
 		HeapTuple	indexTuple;
@@ -1412,7 +1416,7 @@ index_constraint_create(Relation heapRelation,
 			dirty = true;
 		}
 
-		if (deferrable && indexForm->indimmediate)
+		if (deferral != 'n' && indexForm->indimmediate)
 		{
 			indexForm->indimmediate = false;
 			dirty = true;

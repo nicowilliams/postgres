@@ -34,11 +34,13 @@ SET CONSTRAINTS { ALL | <replaceable class="parameter">name</replaceable> [, ...
   </para>
 
   <para>
-   Upon creation, a constraint is given one of three
+   Upon creation, a constraint is given one of four
    characteristics: <literal>DEFERRABLE INITIALLY DEFERRED</literal>,
-   <literal>DEFERRABLE INITIALLY IMMEDIATE</literal>, or
-   <literal>NOT DEFERRABLE</literal>. The third
-   class is always <literal>IMMEDIATE</literal> and is not affected by the
+   <literal>DEFERRABLE INITIALLY IMMEDIATE</literal>,
+   <literal>NOT DEFERRABLE</literal>, or <literal>ALWAYS DEFERRED</literal>.
+   The third
+   class is always <literal>IMMEDIATE</literal>, while the fourth class is
+   always <literal>DEFERRED</literal>, and neither affected by the
    <command>SET CONSTRAINTS</command> command.  The first two classes start
    every transaction in the indicated mode, but their behavior can be changed
    within a transaction by <command>SET CONSTRAINTS</command>.
