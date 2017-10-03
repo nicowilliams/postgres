@@ -7093,6 +7093,7 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 				i_tgenabled,
 				i_tgdeferrable,
 				i_tginitdeferred,
+				i_tgalwaysdeferred,
 				i_tgdef;
 	int			ntups;
 
@@ -7191,6 +7192,7 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 		i_tgenabled = PQfnumber(res, "tgenabled");
 		i_tgdeferrable = PQfnumber(res, "tgdeferrable");
 		i_tginitdeferred = PQfnumber(res, "tginitdeferred");
+		i_tgalwaysdeferred = PQfnumber(res, "tgalwaysdeferred");
 		i_tgdef = PQfnumber(res, "tgdef");
 
 		tginfo = (TriggerInfo *) pg_malloc(ntups * sizeof(TriggerInfo));
@@ -7220,6 +7222,7 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 				tginfo[j].tgisconstraint = false;
 				tginfo[j].tgdeferrable = false;
 				tginfo[j].tginitdeferred = false;
+				tginfo[j].tgalwaysdeferred = false;
 				tginfo[j].tgconstrname = NULL;
 				tginfo[j].tgconstrrelid = InvalidOid;
 				tginfo[j].tgconstrrelname = NULL;
@@ -7235,6 +7238,8 @@ getTriggers(Archive *fout, TableInfo tblinfo[], int numTables)
 				tginfo[j].tgisconstraint = *(PQgetvalue(res, j, i_tgisconstraint)) == 't';
 				tginfo[j].tgdeferrable = *(PQgetvalue(res, j, i_tgdeferrable)) == 't';
 				tginfo[j].tginitdeferred = *(PQgetvalue(res, j, i_tginitdeferred)) == 't';
+				if (i_tgalwaysdeferred != -1)
+					tginfo[j].tgalwaysdeferred = *(PQgetvalue(res, j, i_tgalwaysdeferred)) == 't';
 
 				if (tginfo[j].tgisconstraint)
 				{
@@ -16762,9 +16767,12 @@ dumpTrigger(Archive *fout, TriggerInfo *tginfo)
 				appendPQExpBufferStr(query, "NOT ");
 			appendPQExpBufferStr(query, "DEFERRABLE INITIALLY ");
 			if (tginfo->tginitdeferred)
-				appendPQExpBufferStr(query, "DEFERRED\n");
+				appendPQExpBufferStr(query, "DEFERRED");
 			else
-				appendPQExpBufferStr(query, "IMMEDIATE\n");
+				appendPQExpBufferStr(query, "IMMEDIATE");
+			if (tginfo->tgalwaysdeferred)
+				appendPQExpBufferStr(query, " ALWAYS DEFERRED");
+			appendPQExpBufferStr(query, "\n");
 		}
 
 		if (TRIGGER_FOR_ROW(tginfo->tgtype))

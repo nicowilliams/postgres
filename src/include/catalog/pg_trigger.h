@@ -88,13 +88,13 @@ typedef FormData_pg_trigger *Form_pg_trigger;
 #define Anum_pg_trigger_tgconstraint	9
 #define Anum_pg_trigger_tgdeferrable	10
 #define Anum_pg_trigger_tginitdeferred	11
-#define Anum_pg_trigger_tgnargs			12
-#define Anum_pg_trigger_tgattr			13
-#define Anum_pg_trigger_tgargs			14
-#define Anum_pg_trigger_tgqual			15
-#define Anum_pg_trigger_tgoldtable		16
-#define Anum_pg_trigger_tgnewtable		17
-#define Anum_pg_trigger_tgalwaysdeferred	18
+#define Anum_pg_trigger_tgalwaysdeferred	12
+#define Anum_pg_trigger_tgnargs			13
+#define Anum_pg_trigger_tgattr			14
+#define Anum_pg_trigger_tgargs			15
+#define Anum_pg_trigger_tgqual			16
+#define Anum_pg_trigger_tgoldtable		17
+#define Anum_pg_trigger_tgnewtable		18
 
 /* Bits within tgtype */
 #define TRIGGER_TYPE_ROW				(1 << 0)

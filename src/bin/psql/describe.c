@@ -2077,10 +2077,11 @@ describeOneTableDetails(const char *schemaname,
 			char	   *indisvalid = PQgetvalue(result, 0, 3);
 			char	   *deferrable = PQgetvalue(result, 0, 4);
 			char	   *deferred = PQgetvalue(result, 0, 5);
-			char	   *indisreplident = PQgetvalue(result, 0, 6);
-			char	   *indamname = PQgetvalue(result, 0, 7);
-			char	   *indtable = PQgetvalue(result, 0, 8);
-			char	   *indpred = PQgetvalue(result, 0, 9);
+			char	   *alwaysdeferred = PQgetvalue(result, 0, 6);
+			char	   *indisreplident = PQgetvalue(result, 0, 7);
+			char	   *indamname = PQgetvalue(result, 0, 8);
+			char	   *indtable = PQgetvalue(result, 0, 9);
+			char	   *indpred = PQgetvalue(result, 0, 10);
 
 			if (strcmp(indisprimary, "t") == 0)
 				printfPQExpBuffer(&tmpbuf, _("primary key, "));
@@ -2108,6 +2109,9 @@ describeOneTableDetails(const char *schemaname,
 
 			if (strcmp(deferred, "t") == 0)
 				appendPQExpBufferStr(&tmpbuf, _(", initially deferred"));
+
+			if (strcmp(alwaysdeferred, "t") == 0)
+				appendPQExpBufferStr(&tmpbuf, _(", always deferred"));
 
 			if (strcmp(indisreplident, "t") == 0)
 				appendPQExpBuffer(&tmpbuf, _(", replica identity"));
@@ -2211,6 +2215,9 @@ describeOneTableDetails(const char *schemaname,
 
 						if (strcmp(PQgetvalue(result, i, 9), "t") == 0)
 							appendPQExpBufferStr(&buf, " INITIALLY DEFERRED");
+
+						if (strcmp(PQgetvalue(result, i, 10), "t") == 0)
+							appendPQExpBufferStr(&buf, " ALWAYS DEFERRED");
 					}
 
 					/* Add these for all cases */

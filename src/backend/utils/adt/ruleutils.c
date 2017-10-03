@@ -936,6 +936,8 @@ pg_get_triggerdef_worker(Oid trigid, bool pretty)
 			appendStringInfoString(&buf, "DEFERRED ");
 		else
 			appendStringInfoString(&buf, "IMMEDIATE ");
+                if (trigrec->tgalwaysdeferred)
+                        appendStringInfoString(&buf, "ALWAYS DEFERRED");
 	}
 
 	value = fastgetattr(ht_trig, Anum_pg_trigger_tgoldtable,

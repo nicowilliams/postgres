@@ -2149,7 +2149,8 @@ ExecCallTriggerFunc(TriggerData *trigdata,
 			 TRIGGER_FIRED_BY_DELETE(trigdata->tg_event)) &&
 			TRIGGER_FIRED_AFTER(trigdata->tg_event) &&
 			!(trigdata->tg_event & AFTER_TRIGGER_DEFERRABLE) &&
-			!(trigdata->tg_event & AFTER_TRIGGER_INITDEFERRED)) ||
+			!(trigdata->tg_event & AFTER_TRIGGER_INITDEFERRED) &&
+			!(trigdata->tg_event & AFTER_TRIGGER_ALEWAYSDEFERRED)) ||
 		   (trigdata->tg_oldtable == NULL && trigdata->tg_newtable == NULL));
 
 	finfo += tgindx;
