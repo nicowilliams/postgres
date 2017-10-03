@@ -6944,6 +6944,13 @@ SCRAM-SHA-256$<replaceable>&lt;iteration count&gt;</>:<replaceable>&lt;salt&gt;<
      </row>
 
      <row>
+      <entry><structfield>tgalwaysdeferred</structfield></entry>
+      <entry><type>bool</type></entry>
+      <entry></entry>
+      <entry>True if constraint trigger is always deferred</entry>
+     </row>
+
+     <row>
       <entry><structfield>tgnargs</structfield></entry>
       <entry><type>int2</type></entry>
       <entry></entry>
@@ -7005,7 +7012,8 @@ SCRAM-SHA-256$<replaceable>&lt;iteration count&gt;</>:<replaceable>&lt;salt&gt;<
    <para>
     When <structfield>tgconstraint</> is nonzero,
     <structfield>tgconstrrelid</>, <structfield>tgconstrindid</>,
-    <structfield>tgdeferrable</>, and <structfield>tginitdeferred</> are
+    <structfield>tgdeferrable</>, <structfield>tginitdeferred</>, and
+    <structfield>tgalwaysdeferred</> are
     largely redundant with the referenced <structname>pg_constraint</> entry.
     However, it is possible for a non-deferrable trigger to be associated
     with a deferrable constraint: foreign key constraints can have some
