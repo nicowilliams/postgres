@@ -6874,6 +6874,7 @@ ATExecAddIndexConstraint(AlteredTableInfo *tab, Relation rel,
 									  constraintType,
 									  stmt->deferrable,
 									  stmt->initdeferred,
+									  stmt->alwaysdeferred,
 									  stmt->primary,
 									  true, /* update pg_index */
 									  true, /* remove old dependencies */
@@ -7443,6 +7444,7 @@ ATAddForeignKeyConstraint(AlteredTableInfo *tab, Relation rel,
 									  CONSTRAINT_FOREIGN,
 									  fkconstraint->deferrable,
 									  fkconstraint->initdeferred,
+									  fkconstraint->alwaysdeferred,
 									  fkconstraint->initially_valid,
 									  RelationGetRelid(rel),
 									  fkattnum,
@@ -7567,7 +7569,8 @@ ATExecAlterConstraint(Relation rel, AlterTableCmd *cmd,
 						cmdcon->conname, RelationGetRelationName(rel))));
 
 	if (currcon->condeferrable != cmdcon->deferrable ||
-		currcon->condeferred != cmdcon->initdeferred)
+		currcon->condeferred != cmdcon->initdeferred ||
+		currcon->conalwaysdeferred != cmdcon->alwaysdeferred)
 	{
 		HeapTuple	copyTuple;
 		HeapTuple	tgtuple;
@@ -7585,6 +7588,7 @@ ATExecAlterConstraint(Relation rel, AlterTableCmd *cmd,
 		copy_con = (Form_pg_constraint) GETSTRUCT(copyTuple);
 		copy_con->condeferrable = cmdcon->deferrable;
 		copy_con->condeferred = cmdcon->initdeferred;
+		copy_con->conalwaysdeferred = cmdcon->alwaysdeferred;
 		CatalogTupleUpdate(conrel, &copyTuple->t_self, copyTuple);
 
 		InvokeObjectPostAlterHook(ConstraintRelationId,
@@ -7638,6 +7642,7 @@ ATExecAlterConstraint(Relation rel, AlterTableCmd *cmd,
 
 			copy_tg->tgdeferrable = cmdcon->deferrable;
 			copy_tg->tginitdeferred = cmdcon->initdeferred;
+			copy_tg->tgalwaysdeferred = cmdcon->alwaysdeferred;
 			CatalogTupleUpdate(tgrel, &copyTuple->t_self, copyTuple);
 
 			InvokeObjectPostAlterHook(TriggerRelationId,
@@ -8305,6 +8310,7 @@ validateForeignKeyConstraint(char *conname,
 	trig.tgconstraint = constraintOid;
 	trig.tgdeferrable = FALSE;
 	trig.tginitdeferred = FALSE;
+	trig.tgalwaysdeferred = FALSE;
 	/* we needn't fill in remaining fields */
 
 	/*
@@ -8394,6 +8400,7 @@ CreateFKCheckTrigger(Oid myRelOid, Oid refRelOid, Constraint *fkconstraint,
 	fk_trigger->isconstraint = true;
 	fk_trigger->deferrable = fkconstraint->deferrable;
 	fk_trigger->initdeferred = fkconstraint->initdeferred;
+	fk_trigger->alwaysdeferred = fkconstraint->alwaysdeferred;
 	fk_trigger->constrrel = NULL;
 	fk_trigger->args = NIL;
 
@@ -8442,26 +8449,31 @@ createForeignKeyTriggers(Relation rel, Oid refRelOid, Constraint *fkconstraint,
 		case FKCONSTR_ACTION_NOACTION:
 			fk_trigger->deferrable = fkconstraint->deferrable;
 			fk_trigger->initdeferred = fkconstraint->initdeferred;
+			fk_trigger->alwaysdeferred = fkconstraint->alwaysdeferred;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_noaction_del");
 			break;
 		case FKCONSTR_ACTION_RESTRICT:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_restrict_del");
 			break;
 		case FKCONSTR_ACTION_CASCADE:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_cascade_del");
 			break;
 		case FKCONSTR_ACTION_SETNULL:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_setnull_del");
 			break;
 		case FKCONSTR_ACTION_SETDEFAULT:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_setdefault_del");
 			break;
 		default:
@@ -8497,26 +8509,31 @@ createForeignKeyTriggers(Relation rel, Oid refRelOid, Constraint *fkconstraint,
 		case FKCONSTR_ACTION_NOACTION:
 			fk_trigger->deferrable = fkconstraint->deferrable;
 			fk_trigger->initdeferred = fkconstraint->initdeferred;
+			fk_trigger->alwaysdeferred = fkconstraint->alwaysdeferred;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_noaction_upd");
 			break;
 		case FKCONSTR_ACTION_RESTRICT:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_restrict_upd");
 			break;
 		case FKCONSTR_ACTION_CASCADE:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_cascade_upd");
 			break;
 		case FKCONSTR_ACTION_SETNULL:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_setnull_upd");
 			break;
 		case FKCONSTR_ACTION_SETDEFAULT:
 			fk_trigger->deferrable = false;
 			fk_trigger->initdeferred = false;
+			fk_trigger->alwaysdeferred = false;
 			fk_trigger->funcname = SystemFuncName("RI_FKey_setdefault_upd");
 			break;
 		default:
@@ -11261,6 +11278,7 @@ constraints_equivalent(HeapTuple a, HeapTuple b, TupleDesc tupleDesc)
 
 	if (acon->condeferrable != bcon->condeferrable ||
 		acon->condeferred != bcon->condeferred ||
+		acon->conalwaysdeferred != bcon->conalwaysdeferred ||
 		strcmp(decompile_conbin(a, tupleDesc),
 			   decompile_conbin(b, tupleDesc)) != 0)
 		return false;
