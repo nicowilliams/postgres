@@ -681,6 +681,7 @@ UpdateIndexRelation(Oid indexoid,
  * isconstraint: index is owned by PRIMARY KEY, UNIQUE, or EXCLUSION constraint
  * deferrable: constraint is DEFERRABLE
  * initdeferred: constraint is INITIALLY DEFERRED
+ * alwaysdeferred: constraint is ALWAYS DEFERRED
  * allow_system_table_mods: allow table to be a system catalog
  * skip_build: true to skip the index_build() step for the moment; caller
  *		must do it later (typically via reindex_index())
@@ -710,6 +711,7 @@ index_create(Relation heapRelation,
 			 bool isconstraint,
 			 bool deferrable,
 			 bool initdeferred,
+			 bool alwaysdeferred,
 			 bool allow_system_table_mods,
 			 bool skip_build,
 			 bool concurrent,
@@ -963,6 +965,7 @@ index_create(Relation heapRelation,
 									constraintType,
 									deferrable,
 									initdeferred,
+									alwaysdeferred,
 									false,	/* already marked primary */
 									false,	/* pg_index entry is OK */
 									false,	/* no old dependencies */
@@ -1006,6 +1009,7 @@ index_create(Relation heapRelation,
 			/* Non-constraint indexes can't be deferrable */
 			Assert(!deferrable);
 			Assert(!initdeferred);
+			Assert(!alwaysdeferred);
 		}
 
 		/* Store dependency on collations */
@@ -1059,6 +1063,7 @@ index_create(Relation heapRelation,
 		Assert(!isconstraint);
 		Assert(!deferrable);
 		Assert(!initdeferred);
+		Assert(!alwaysdeferred);
 	}
 
 	/* Post creation hook for new index */
@@ -1151,6 +1156,7 @@ index_constraint_create(Relation heapRelation,
 						char constraintType,
 						bool deferrable,
 						bool initdeferred,
+						bool alwaysdeferred,
 						bool mark_as_primary,
 						bool update_pgindex,
 						bool remove_old_dependencies,
@@ -1199,6 +1205,7 @@ index_constraint_create(Relation heapRelation,
 								   constraintType,
 								   deferrable,
 								   initdeferred,
+								   alwaysdeferred,
 								   true,
 								   RelationGetRelid(heapRelation),
 								   indexInfo->ii_KeyAttrNumbers,
@@ -1263,6 +1270,7 @@ index_constraint_create(Relation heapRelation,
 		trigger->isconstraint = true;
 		trigger->deferrable = true;
 		trigger->initdeferred = initdeferred;
+		trigger->alwaysdeferred = alwaysdeferred;
 		trigger->constrrel = NULL;
 
 		(void) CreateTrigger(trigger, NULL, RelationGetRelid(heapRelation),

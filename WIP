@@ -1,0 +1,25 @@
+WIP notes for adding ALWAYS DEFERRED option for CONSTRAINTs and CONSTRAINT TRIGGERs
+===================================================================================
+
+ - add ALWAYS DEFERRED syntax in src/backend/parser/gram.y (DONE)
+
+   (the existing NOT DEFERRABLE == ALWAYS IMMEDIATE, so we don't add that)
+
+ - add alwaysdeferred field to several structs -- wherever initdeferred
+   is defined, basically (DONE)
+
+ - add conalwaysdeferred column to pg_constraints
+
+ - in src/backend/commands/trigger.c modify places where all_isdeferred
+   and all_isset are used (DONE)
+
+ - add AFTER_TRIGGER_ALWAYSDEFERRED for AfterTriggerSharedData's
+   ats_event (struct) and fill it in in AfterTriggerSaveEvent(), that
+   way afterTriggerCheckState() can check this
+
+   (DONE)
+
+ - add docs (DONE)
+
+ - add tests (TBD)
+

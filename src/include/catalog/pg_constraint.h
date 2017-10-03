@@ -44,6 +44,7 @@ CATALOG(pg_constraint,2606)
 	char		contype;		/* constraint type; see codes below */
 	bool		condeferrable;	/* deferrable constraint? */
 	bool		condeferred;	/* deferred by default? */
+	bool		conalwaysdeferred;	/* always deferred? */
 	bool		convalidated;	/* constraint has been validated? */
 
 	/*
@@ -150,7 +151,7 @@ typedef FormData_pg_constraint *Form_pg_constraint;
  *		compiler constants for pg_constraint
  * ----------------
  */
-#define Natts_pg_constraint					24
+#define Natts_pg_constraint					25
 #define Anum_pg_constraint_conname			1
 #define Anum_pg_constraint_connamespace		2
 #define Anum_pg_constraint_contype			3
@@ -175,6 +176,7 @@ typedef FormData_pg_constraint *Form_pg_constraint;
 #define Anum_pg_constraint_conexclop		22
 #define Anum_pg_constraint_conbin			23
 #define Anum_pg_constraint_consrc			24
+#define Anum_pg_constraint_conalwaysdeferred		25
 
 /* ----------------
  *		initial contents of pg_constraint

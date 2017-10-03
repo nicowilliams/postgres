@@ -2202,6 +2202,13 @@ SCRAM-SHA-256$<replaceable>&lt;iteration count&gt;</>:<replaceable>&lt;salt&gt;<
      </row>
 
      <row>
+      <entry><structfield>conalwaysdeferred</structfield></entry>
+      <entry><type>bool</type></entry>
+      <entry></entry>
+      <entry>Is the constraint always deferred?</entry>
+     </row>
+
+     <row>
       <entry><structfield>convalidated</structfield></entry>
       <entry><type>bool</type></entry>
       <entry></entry>

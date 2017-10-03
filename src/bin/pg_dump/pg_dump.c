@@ -6404,6 +6404,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 				i_conname,
 				i_condeferrable,
 				i_condeferred,
+				i_conalwaysdeferred,
 				i_contableoid,
 				i_conoid,
 				i_condef,
@@ -6466,7 +6467,8 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "c.oid AS conoid, "
 							  "pg_catalog.pg_get_constraintdef(c.oid, false) AS condef, "
 							  "(SELECT spcname FROM pg_catalog.pg_tablespace s WHERE s.oid = t.reltablespace) AS tablespace, "
-							  "t.reloptions AS indreloptions "
+							  "t.reloptions AS indreloptions, "
+							  "c.conalwaysdeferred "
 							  "FROM pg_catalog.pg_index i "
 							  "JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) "
 							  "LEFT JOIN pg_catalog.pg_constraint c "
@@ -6497,7 +6499,8 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "c.oid AS conoid, "
 							  "pg_catalog.pg_get_constraintdef(c.oid, false) AS condef, "
 							  "(SELECT spcname FROM pg_catalog.pg_tablespace s WHERE s.oid = t.reltablespace) AS tablespace, "
-							  "t.reloptions AS indreloptions "
+							  "t.reloptions AS indreloptions, "
+							  "c.conalwaysdeferred "
 							  "FROM pg_catalog.pg_index i "
 							  "JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) "
 							  "LEFT JOIN pg_catalog.pg_constraint c "
@@ -6524,7 +6527,8 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "c.oid AS conoid, "
 							  "null AS condef, "
 							  "(SELECT spcname FROM pg_catalog.pg_tablespace s WHERE s.oid = t.reltablespace) AS tablespace, "
-							  "t.reloptions AS indreloptions "
+							  "t.reloptions AS indreloptions, "
+							  "c.conalwaysdeferred "
 							  "FROM pg_catalog.pg_index i "
 							  "JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) "
 							  "LEFT JOIN pg_catalog.pg_depend d "
@@ -6554,7 +6558,8 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 							  "c.oid AS conoid, "
 							  "null AS condef, "
 							  "(SELECT spcname FROM pg_catalog.pg_tablespace s WHERE s.oid = t.reltablespace) AS tablespace, "
-							  "null AS indreloptions "
+							  "null AS indreloptions, "
+							  "c.conalwaysdeferred "
 							  "FROM pg_catalog.pg_index i "
 							  "JOIN pg_catalog.pg_class t ON (t.oid = i.indexrelid) "
 							  "LEFT JOIN pg_catalog.pg_depend d "
@@ -6586,6 +6591,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 		i_conname = PQfnumber(res, "conname");
 		i_condeferrable = PQfnumber(res, "condeferrable");
 		i_condeferred = PQfnumber(res, "condeferred");
+		i_conalwaysdeferred = PQfnumber(res, "conalwaysdeferred");
 		i_contableoid = PQfnumber(res, "contableoid");
 		i_conoid = PQfnumber(res, "conoid");
 		i_condef = PQfnumber(res, "condef");
@@ -6641,6 +6647,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 				constrinfo[j].conindex = indxinfo[j].dobj.dumpId;
 				constrinfo[j].condeferrable = *(PQgetvalue(res, j, i_condeferrable)) == 't';
 				constrinfo[j].condeferred = *(PQgetvalue(res, j, i_condeferred)) == 't';
+				constrinfo[j].conalwaysdeferred = *(PQgetvalue(res, j, i_conalwaysdeferred)) == 't';
 				constrinfo[j].conislocal = true;
 				constrinfo[j].separate = true;
 
@@ -6838,6 +6845,7 @@ getConstraints(Archive *fout, TableInfo tblinfo[], int numTables)
 			constrinfo[j].conindex = 0;
 			constrinfo[j].condeferrable = false;
 			constrinfo[j].condeferred = false;
+			constrinfo[j].conalwaysdeferred = false;
 			constrinfo[j].conislocal = true;
 			constrinfo[j].separate = true;
 		}
@@ -6924,6 +6932,7 @@ getDomainConstraints(Archive *fout, TypeInfo *tyinfo)
 		constrinfo[i].conindex = 0;
 		constrinfo[i].condeferrable = false;
 		constrinfo[i].condeferred = false;
+		constrinfo[i].conalwaysdeferred = false;
 		constrinfo[i].conislocal = true;
 
 		constrinfo[i].separate = !validated;
@@ -8178,6 +8187,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 				constrs[j].conindex = 0;
 				constrs[j].condeferrable = false;
 				constrs[j].condeferred = false;
+				constrs[j].conalwaysdeferred = false;
 				constrs[j].conislocal = (PQgetvalue(res, j, 4)[0] == 't');
 
 				/*
@@ -16087,6 +16097,11 @@ dumpConstraint(Archive *fout, ConstraintInfo *coninfo)
 				appendPQExpBufferStr(q, " DEFERRABLE");
 				if (coninfo->condeferred)
 					appendPQExpBufferStr(q, " INITIALLY DEFERRED");
+			}
+
+			if (coninfo->conalwaysdeferred)
+			{
+				appendPQExpBufferStr(q, " ALWAYS DEFERRED");
 			}
 
 			appendPQExpBufferStr(q, ";\n");

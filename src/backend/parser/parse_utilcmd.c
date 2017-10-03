@@ -1359,6 +1359,7 @@ generateClonedIndexStmt(CreateStmtContext *cxt, Relation source_idx,
 			index->isconstraint = true;
 			index->deferrable = conrec->condeferrable;
 			index->initdeferred = conrec->condeferred;
+			index->alwaysdeferred = conrec->conalwaysdeferred;
 
 			/* If it's an exclusion constraint, we need the operator names */
 			if (idxrec->indisexclusion)

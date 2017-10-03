@@ -2037,10 +2037,17 @@ describeOneTableDetails(const char *schemaname,
 								 "WHERE conrelid = i.indrelid AND "
 								 "conindid = i.indexrelid AND "
 								 "contype IN ('p','u','x') AND "
-								 "condeferred) AS condeferred,\n");
+								 "condeferred) AS condeferred,\n"
+								 "  (NOT i.indimmediate) AND "
+								 "EXISTS (SELECT 1 FROM pg_catalog.pg_constraint "
+								 "WHERE conrelid = i.indrelid AND "
+								 "conindid = i.indexrelid AND "
+								 "contype IN ('p','u','x') AND "
+								 "conalwaysdeferred) AS conalwaysdeferred,\n"
+								 );
 		else
 			appendPQExpBufferStr(&buf,
-								 "  false AS condeferrable, false AS condeferred,\n");
+								 "  false AS condeferrable, false AS condeferred, false AS conalwaysdeferred\n");
 
 		if (pset.sversion >= 90400)
 			appendPQExpBuffer(&buf, "i.indisreplident,\n");
@@ -2134,11 +2141,11 @@ describeOneTableDetails(const char *schemaname,
 			if (pset.sversion >= 90000)
 				appendPQExpBufferStr(&buf,
 									 "pg_catalog.pg_get_constraintdef(con.oid, true), "
-									 "contype, condeferrable, condeferred");
+									 "contype, condeferrable, condeferred, conalwaysdeferred");
 			else
 				appendPQExpBufferStr(&buf,
 									 "null AS constraintdef, null AS contype, "
-									 "false AS condeferrable, false AS condeferred");
+									 "false AS condeferrable, false AS condeferred, false as conalwaysdeferred");
 			if (pset.sversion >= 90400)
 				appendPQExpBufferStr(&buf, ", i.indisreplident");
 			else
