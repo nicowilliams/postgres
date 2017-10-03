@@ -894,11 +894,13 @@ CREATE VIEW domain_constraints AS
            CAST(CASE WHEN condeferrable THEN 'YES' ELSE 'NO' END
              AS yes_or_no) AS is_deferrable,
            CAST(CASE WHEN condeferred THEN 'YES' ELSE 'NO' END
-             AS yes_or_no) AS initially_deferred
+             AS yes_or_no) AS initially_deferred,
 	   /*
 	    * XXX Can we add is_always_deferred here?  Are there
 	    * standards considerations?
 	    */
+           CAST(CASE WHEN conalwaysdeferred THEN 'YES' ELSE 'NO' END
+             AS yes_or_no) AS always_deferred
     FROM pg_namespace rs, pg_namespace n, pg_constraint con, pg_type t
     WHERE rs.oid = con.connamespace
           AND n.oid = t.typnamespace
@@ -1782,11 +1784,13 @@ CREATE VIEW table_constraints AS
            CAST(CASE WHEN c.condeferrable THEN 'YES' ELSE 'NO' END AS yes_or_no)
              AS is_deferrable,
            CAST(CASE WHEN c.condeferred THEN 'YES' ELSE 'NO' END AS yes_or_no)
-             AS initially_deferred
+             AS initially_deferred,
 	   /*
 	    * XXX Can we add is_always_deferred here?  Are there
 	    * standards considerations?
 	    */
+           CAST(CASE WHEN c.conalwaysdeferred THEN 'YES' ELSE 'NO' END AS yes_or_no)
+             AS always_deferred
 
     FROM pg_namespace nc,
          pg_namespace nr,
@@ -1815,7 +1819,8 @@ CREATE VIEW table_constraints AS
            CAST(r.relname AS sql_identifier) AS table_name,
            CAST('CHECK' AS character_data) AS constraint_type,
            CAST('NO' AS yes_or_no) AS is_deferrable,
-           CAST('NO' AS yes_or_no) AS initially_deferred
+           CAST('NO' AS yes_or_no) AS initially_deferred,
+           CAST('NO' AS yes_or_no) AS always_deferred
 
     FROM pg_namespace nr,
          pg_class r,
