@@ -3686,7 +3686,7 @@ afterTriggerCheckState(AfterTriggerShared evtshared)
 	 */
 	if ((evtshared->ats_event & AFTER_TRIGGER_DEFERRABLE) == 0)
 		return false;
-	if ((evtshared->ats_event & AFTER_TRIGGER_ALWAYSDEFERRED) == 0)
+	if ((evtshared->ats_event & AFTER_TRIGGER_ALWAYSDEFERRED) == 1)
 		return true;
 
 	/*
