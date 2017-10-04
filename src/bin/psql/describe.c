@@ -2227,7 +2227,7 @@ describeOneTableDetails(const char *schemaname,
 					if (strcmp(PQgetvalue(result, i, 4), "t") != 0)
 						appendPQExpBufferStr(&buf, " INVALID");
 
-					if (strcmp(PQgetvalue(result, i, 10), "t") == 0)
+					if (strcmp(PQgetvalue(result, i, 11), "t") == 0)
 						appendPQExpBuffer(&buf, " REPLICA IDENTITY");
 
 					printTableAddFooter(&cont, buf.data);
@@ -2235,7 +2235,7 @@ describeOneTableDetails(const char *schemaname,
 					/* Print tablespace of the index on the same line */
 					if (pset.sversion >= 80000)
 						add_tablespace_footer(&cont, RELKIND_INDEX,
-											  atooid(PQgetvalue(result, i, 11)),
+											  atooid(PQgetvalue(result, i, 12)),
 											  false);
 				}
 			}
