@@ -5382,7 +5382,7 @@ ConstraintAttributeSpec:
 						(newspec & (CAS_INITIALLY_DEFERRED | CAS_ALWAYS_DEFERRED)))
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("constraint declared INITIALLY or ALWAYS DEFERRED must be DEFERRABLE"),
+								 errmsg("constraint declared INITIALLY DEFERRED must be DEFERRABLE"),
 								 parser_errposition(@2)));
 					/* generic message for other conflicts */
 					if ((newspec & CAS_ALWAYS_DEFERRED) &&
