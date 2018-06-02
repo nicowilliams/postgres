@@ -3149,9 +3149,7 @@ domainAddConstraint(Oid domainOid, Oid domainNamespace, Oid baseTypeOid,
 		CreateConstraintEntry(constr->conname,	/* Constraint Name */
 							  domainNamespace,	/* namespace */
 							  CONSTRAINT_CHECK, /* Constraint Type */
-							  false,	/* Is Deferrable */
-							  false,	/* Is Deferred */
-							  false,	/* Is Always Deferred */
+							  'n',		    /* Deferral option */
 							  !constr->skip_validation, /* Is Validated */
 							  InvalidOid,	/* no parent constraint */
 							  InvalidOid,	/* not a relation constraint */

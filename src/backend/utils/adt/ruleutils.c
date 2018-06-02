@@ -941,14 +941,14 @@ pg_get_triggerdef_worker(Oid trigid, bool pretty)
 		if (OidIsValid(trigrec->tgconstrrelid))
 			appendStringInfo(&buf, "FROM %s ",
 							 generate_relation_name(trigrec->tgconstrrelid, NIL));
-		if (!trigrec->tgdeferrable)
+		if (trigrec->tgdeferral == 'n')
 			appendStringInfoString(&buf, "NOT ");
 		appendStringInfoString(&buf, "DEFERRABLE INITIALLY ");
-		if (trigrec->tginitdeferred)
+		if (trigrec->tgdeferral == 'i' || trigrec->tgdeferral == 'a')
 			appendStringInfoString(&buf, "DEFERRED ");
-		else
+		else if (trigrec->tgdeferral == 'd')
 			appendStringInfoString(&buf, "IMMEDIATE ");
-		if (trigrec->tgalwaysdeferred)
+		if (trigrec->tgdeferral == 'a')
 			appendStringInfoString(&buf, "ALWAYS DEFERRED");
 	}
 
@@ -2208,11 +2208,11 @@ pg_get_constraintdef_worker(Oid constraintId, bool fullCommand,
 			break;
 	}
 
-	if (conForm->condeferrable)
+	if (conForm->condeferral != 'n')
 		appendStringInfoString(&buf, " DEFERRABLE");
-	if (conForm->condeferred)
+	if (conForm->condeferral == 'i')
 		appendStringInfoString(&buf, " INITIALLY DEFERRED");
-	if (conForm->conalwaysdeferred)
+	if (conForm->condeferral == 'a')
 		appendStringInfoString(&buf, " ALWAYS DEFERRED");
 	if (!conForm->convalidated)
 		appendStringInfoString(&buf, " NOT VALID");

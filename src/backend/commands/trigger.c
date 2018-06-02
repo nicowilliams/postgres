@@ -728,9 +728,7 @@ CreateTrigger(CreateTrigStmt *stmt, const char *queryString,
 		constraintOid = CreateConstraintEntry(stmt->trigname,
 											  RelationGetNamespace(rel),
 											  CONSTRAINT_TRIGGER,
-											  stmt->deferrable,
-											  stmt->initdeferred,
-											  stmt->alwaysdeferred,
+											  stmt->deferral,
 											  true,
 											  InvalidOid,	/* no parent */
 											  RelationGetRelid(rel),
@@ -834,9 +832,7 @@ CreateTrigger(CreateTrigStmt *stmt, const char *queryString,
 	values[Anum_pg_trigger_tgconstrrelid - 1] = ObjectIdGetDatum(constrrelid);
 	values[Anum_pg_trigger_tgconstrindid - 1] = ObjectIdGetDatum(indexOid);
 	values[Anum_pg_trigger_tgconstraint - 1] = ObjectIdGetDatum(constraintOid);
-	values[Anum_pg_trigger_tgdeferrable - 1] = BoolGetDatum(stmt->deferrable);
-	values[Anum_pg_trigger_tginitdeferred - 1] = BoolGetDatum(stmt->initdeferred);
-	values[Anum_pg_trigger_tgalwaysdeferred - 1] = BoolGetDatum(stmt->alwaysdeferred);
+	values[Anum_pg_trigger_tgdeferral - 1] = CharGetDatum(stmt->deferral);
 
 	if (stmt->args)
 	{
@@ -1451,9 +1447,7 @@ ConvertTriggerToFK(CreateTrigStmt *stmt, Oid funcoid)
 				/* can't get here because of earlier checks */
 				elog(ERROR, "confused about RI delete function");
 		}
-		fkcon->deferrable = stmt->deferrable;
-		fkcon->initdeferred = stmt->initdeferred;
-		fkcon->alwaysdeferred = stmt->alwaysdeferred;
+		fkcon->deferral = stmt->deferral;
 		fkcon->skip_validation = false;
 		fkcon->initially_valid = true;
 
@@ -1970,9 +1964,7 @@ RelationBuildTriggers(Relation relation)
 		build->tgconstrrelid = pg_trigger->tgconstrrelid;
 		build->tgconstrindid = pg_trigger->tgconstrindid;
 		build->tgconstraint = pg_trigger->tgconstraint;
-		build->tgdeferrable = pg_trigger->tgdeferrable;
-		build->tginitdeferred = pg_trigger->tginitdeferred;
-		build->tgalwaysdeferred = pg_trigger->tgalwaysdeferred;
+		build->tgdeferral = pg_trigger->tgdeferral;
 		build->tgnargs = pg_trigger->tgnargs;
 		/* tgattr is first var-width field, so OK to access directly */
 		build->tgnattr = pg_trigger->tgattr.dim1;
@@ -2277,11 +2269,7 @@ equalTriggerDescs(TriggerDesc *trigdesc1, TriggerDesc *trigdesc2)
 				return false;
 			if (trig1->tgconstraint != trig2->tgconstraint)
 				return false;
-			if (trig1->tgdeferrable != trig2->tgdeferrable)
-				return false;
-			if (trig1->tginitdeferred != trig2->tginitdeferred)
-				return false;
-			if (trig1->tgalwaysdeferred != trig2->tgalwaysdeferred)
+			if (trig1->tgdeferral != trig2->tgdeferral)
 				return false;
 			if (trig1->tgnargs != trig2->tgnargs)
 				return false;
@@ -5430,17 +5418,17 @@ AfterTriggerSetState(ConstraintsSetStmt *stmt)
 				{
 					Form_pg_constraint con = (Form_pg_constraint) GETSTRUCT(tup);
 
-					if (stmt->deferred && !con->condeferrable)
+					if (stmt->deferred && con->condeferral == 'n')
 						ereport(ERROR,
 								(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 								 errmsg("constraint \"%s\" is not deferrable",
 										constraint->relname)));
-					else if (!stmt->deferred && con->conalwaysdeferred)
+					else if (!stmt->deferred && con->condeferral == 'a')
 						ereport(ERROR,
 								(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 								 errmsg("constraint \"%s\" is always deferred",
 										constraint->relname)));
-					else if (con->condeferrable && !con->conalwaysdeferred)
+					else if (con->condeferral != 'n' && con->condeferral != 'a')
 						conoidlist = lappend_oid(conoidlist,
 												 HeapTupleGetOid(tup));
 					found = true;
@@ -5530,7 +5518,7 @@ AfterTriggerSetState(ConstraintsSetStmt *stmt)
 				 * deferrable RI constraint may have some non-deferrable
 				 * actions.
 				 */
-				if (pg_trigger->tgdeferrable)
+				if (pg_trigger->tgdeferral != 'n')
 					tgoidlist = lappend_oid(tgoidlist,
 											HeapTupleGetOid(htup));
 
@@ -5990,9 +5978,9 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 		new_shared.ats_event =
 			(event & TRIGGER_EVENT_OPMASK) |
 			(row_trigger ? TRIGGER_EVENT_ROW : 0) |
-			(trigger->tgdeferrable ? AFTER_TRIGGER_DEFERRABLE : 0) |
-			(trigger->tginitdeferred ? AFTER_TRIGGER_INITDEFERRED : 0) |
-			(trigger->tgalwaysdeferred ? AFTER_TRIGGER_ALWAYSDEFERRED : 0);
+			(trigger->tgdeferral != 'n' ? AFTER_TRIGGER_DEFERRABLE : 0) |
+			(trigger->tgdeferral == 'i' ? AFTER_TRIGGER_INITDEFERRED : 0) |
+			(trigger->tgdeferral == 'a' ? AFTER_TRIGGER_ALWAYSDEFERRED : 0);
 		new_shared.ats_tgoid = trigger->tgoid;
 		new_shared.ats_relid = RelationGetRelid(rel);
 		new_shared.ats_firing_id = 0;

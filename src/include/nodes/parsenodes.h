@@ -2094,9 +2094,7 @@ typedef struct Constraint
 
 	/* Fields used for most/all constraint types: */
 	char	   *conname;		/* Constraint name, or NULL if unnamed */
-	bool		deferrable;		/* DEFERRABLE? */
-	bool		initdeferred;	/* INITIALLY DEFERRED? */
-	bool		alwaysdeferred;	/* ALWAYS DEFERRED? */
+	char		deferral;		/* deferral option */
 	int			location;		/* token location, or -1 if unknown */
 
 	/* Fields used for constraints with expressions (CHECK and DEFAULT): */
@@ -2382,9 +2380,7 @@ typedef struct CreateTrigStmt
 	/* explicitly named transition data */
 	List	   *transitionRels; /* TriggerTransition nodes, or NIL if none */
 	/* The remaining fields are only used for constraint triggers */
-	bool		deferrable;		/* [NOT] DEFERRABLE */
-	bool		initdeferred;	/* INITIALLY {DEFERRED|IMMEDIATE} */
-	bool		alwaysdeferred;	/* ALWAYS DEFERRED? */
+	char		deferral;		/* deferral option */
 	RangeVar   *constrrel;		/* opposite relation, if RI trigger */
 } CreateTrigStmt;
 
@@ -2734,9 +2730,7 @@ typedef struct IndexStmt
 	bool		unique;			/* is index unique? */
 	bool		primary;		/* is index a primary key? */
 	bool		isconstraint;	/* is it for a pkey/unique constraint? */
-	bool		deferrable;		/* is the constraint DEFERRABLE? */
-	bool		initdeferred;	/* is the constraint INITIALLY DEFERRED? */
-	bool		alwaysdeferred;	/* ALWAYS DEFERRED? */
+	char		deferral;		/* constraint deferral option */
 	bool		transformed;	/* true when transformIndexStmt is finished */
 	bool		concurrent;		/* should this be a concurrent index build? */
 	bool		if_not_exists;	/* just do nothing if index already exists? */

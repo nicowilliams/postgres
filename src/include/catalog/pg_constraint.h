@@ -43,9 +43,7 @@ CATALOG(pg_constraint,2606,ConstraintRelationId)
 	NameData	conname;		/* name of this constraint */
 	Oid			connamespace;	/* OID of namespace containing constraint */
 	char		contype;		/* constraint type; see codes below */
-	bool		condeferrable;	/* deferrable constraint? */
-	bool		condeferred;	/* deferred by default? */
-	bool		conalwaysdeferred;	/* always deferred? */
+	char		condeferral;	/* constraint deferral option */
 	bool		convalidated;	/* constraint has been validated? */
 
 	/*
@@ -205,8 +203,7 @@ typedef struct ClonedConstraint
 extern Oid CreateConstraintEntry(const char *constraintName,
 					  Oid constraintNamespace,
 					  char constraintType,
-					  bool isDeferrable,
-					  bool isDeferred,
+					  char deferralOption,
 					  bool isValidated,
 					  Oid parentConstrId,
 					  Oid relId,

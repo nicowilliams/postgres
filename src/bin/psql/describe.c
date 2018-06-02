@@ -2077,28 +2077,15 @@ describeOneTableDetails(const char *schemaname,
 			appendPQExpBufferStr(&buf, "true AS indisvalid,\n");
 		if (pset.sversion >= 90000)
 			appendPQExpBufferStr(&buf,
-								 "  (NOT i.indimmediate) AND "
-								 "EXISTS (SELECT 1 FROM pg_catalog.pg_constraint "
+								 "(SELECT CASE WHEN i.indimmediate THEN 'n' ELSE condeferral END FROM pg_catalog.pg_constraint "
 								 "WHERE conrelid = i.indrelid AND "
 								 "conindid = i.indexrelid AND "
-								 "contype IN ('p','u','x') AND "
-								 "condeferrable) AS condeferrable,\n"
-								 "  (NOT i.indimmediate) AND "
-								 "EXISTS (SELECT 1 FROM pg_catalog.pg_constraint "
-								 "WHERE conrelid = i.indrelid AND "
-								 "conindid = i.indexrelid AND "
-								 "contype IN ('p','u','x') AND "
-								 "condeferred) AS condeferred,\n"
-								 "  (NOT i.indimmediate) AND "
-								 "EXISTS (SELECT 1 FROM pg_catalog.pg_constraint "
-								 "WHERE conrelid = i.indrelid AND "
-								 "conindid = i.indexrelid AND "
-								 "contype IN ('p','u','x') AND "
-								 "conalwaysdeferred) AS conalwaysdeferred,\n"
+								 "contype IN ('p','u','x') "
+								 "UNION SELECT 'n' ORDER BY 1 ASC) AS condeferral,\n"
 								 );
 		else
 			appendPQExpBufferStr(&buf,
-								 "  false AS condeferrable, false AS condeferred, false AS conalwaysdeferred\n");
+								 "  'n' AS condeferral,\n");
 
 		if (pset.sversion >= 90400)
 			appendPQExpBuffer(&buf, "i.indisreplident,\n");
@@ -2126,13 +2113,11 @@ describeOneTableDetails(const char *schemaname,
 			char	   *indisprimary = PQgetvalue(result, 0, 1);
 			char	   *indisclustered = PQgetvalue(result, 0, 2);
 			char	   *indisvalid = PQgetvalue(result, 0, 3);
-			char	   *deferrable = PQgetvalue(result, 0, 4);
-			char	   *deferred = PQgetvalue(result, 0, 5);
-			char	   *alwaysdeferred = PQgetvalue(result, 0, 6);
-			char	   *indisreplident = PQgetvalue(result, 0, 7);
-			char	   *indamname = PQgetvalue(result, 0, 8);
-			char	   *indtable = PQgetvalue(result, 0, 9);
-			char	   *indpred = PQgetvalue(result, 0, 10);
+			char	   *deferral = PQgetvalue(result, 0, 4);
+			char	   *indisreplident = PQgetvalue(result, 0, 5);
+			char	   *indamname = PQgetvalue(result, 0, 6);
+			char	   *indtable = PQgetvalue(result, 0, 7);
+			char	   *indpred = PQgetvalue(result, 0, 8);
 
 			if (strcmp(indisprimary, "t") == 0)
 				printfPQExpBuffer(&tmpbuf, _("primary key, "));
@@ -2155,13 +2140,13 @@ describeOneTableDetails(const char *schemaname,
 			if (strcmp(indisvalid, "t") != 0)
 				appendPQExpBufferStr(&tmpbuf, _(", invalid"));
 
-			if (strcmp(deferrable, "t") == 0)
+			if (*deferral != 'n')
 				appendPQExpBufferStr(&tmpbuf, _(", deferrable"));
 
-			if (strcmp(deferred, "t") == 0)
+			if (*deferral == 'i' || *deferral == 'a')
 				appendPQExpBufferStr(&tmpbuf, _(", initially deferred"));
 
-			if (strcmp(alwaysdeferred, "t") == 0)
+			if (*deferral == 'a')
 				appendPQExpBufferStr(&tmpbuf, _(", always deferred"));
 
 			if (strcmp(indisreplident, "t") == 0)
@@ -2196,11 +2181,11 @@ describeOneTableDetails(const char *schemaname,
 			if (pset.sversion >= 90000)
 				appendPQExpBufferStr(&buf,
 									 "pg_catalog.pg_get_constraintdef(con.oid, true), "
-									 "contype, condeferrable, condeferred, conalwaysdeferred");
+									 "contype, coalesce(condeferral, 'n')");
 			else
 				appendPQExpBufferStr(&buf,
 									 "null AS constraintdef, null AS contype, "
-									 "false AS condeferrable, false AS condeferred, false as conalwaysdeferred");
+									 "'n' AS condeferral");
 			if (pset.sversion >= 90400)
 				appendPQExpBufferStr(&buf, ", i.indisreplident");
 			else
@@ -2241,6 +2226,7 @@ describeOneTableDetails(const char *schemaname,
 					{
 						const char *indexdef;
 						const char *usingpos;
+						char deferral;
 
 						/* Label as primary key or unique (but not both) */
 						if (strcmp(PQgetvalue(result, i, 1), "t") == 0)
@@ -2261,13 +2247,14 @@ describeOneTableDetails(const char *schemaname,
 						appendPQExpBuffer(&buf, " %s", indexdef);
 
 						/* Need these for deferrable PK/UNIQUE indexes */
-						if (strcmp(PQgetvalue(result, i, 8), "t") == 0)
+						deferral = *PQgetvalue(result, i, 8);
+						if (deferral != 'n')
 							appendPQExpBufferStr(&buf, " DEFERRABLE");
 
-						if (strcmp(PQgetvalue(result, i, 9), "t") == 0)
+						if (deferral == 'i')
 							appendPQExpBufferStr(&buf, " INITIALLY DEFERRED");
 
-						if (strcmp(PQgetvalue(result, i, 10), "t") == 0)
+						if (deferral == 'a')
 							appendPQExpBufferStr(&buf, " ALWAYS DEFERRED");
 					}
 
@@ -2278,7 +2265,7 @@ describeOneTableDetails(const char *schemaname,
 					if (strcmp(PQgetvalue(result, i, 4), "t") != 0)
 						appendPQExpBufferStr(&buf, " INVALID");
 
-					if (strcmp(PQgetvalue(result, i, 11), "t") == 0)
+					if (strcmp(PQgetvalue(result, i, 9), "t") == 0)
 						appendPQExpBuffer(&buf, " REPLICA IDENTITY");
 
 					printTableAddFooter(&cont, buf.data);
@@ -2286,7 +2273,7 @@ describeOneTableDetails(const char *schemaname,
 					/* Print tablespace of the index on the same line */
 					if (pset.sversion >= 80000)
 						add_tablespace_footer(&cont, RELKIND_INDEX,
-											  atooid(PQgetvalue(result, i, 12)),
+											  atooid(PQgetvalue(result, i, 10)),
 											  false);
 				}
 			}
